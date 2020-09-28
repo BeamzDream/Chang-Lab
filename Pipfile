@@ -8,6 +8,12 @@ verify_ssl = true
 [packages]
 ml-ms4alg = "*"
 spikeinterface = "*"
+numpy = "*"
+mountainlab-pytools = "*"
+ml-ephys = "*"
+hdf5storage = "*"
+h5py = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.8"
