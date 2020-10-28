@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np 
 import os
 import spikeinterface.extractors as se
 import spikeinterface.sorters as ss
 import spikeinterface.toolkit as st
+from sklearn.preprocessing import normalize
 import scipy.io
 import h5py
 import hdf5storage
@@ -34,7 +34,7 @@ def preprocess_recording(recording, freq_min, freq_max):
   return recording_f
 
 
-def sort_recording(recording, file_name):
+def sort_recording(recording, file_name, filter=True):
   
   start_time = time.time()
 
@@ -45,6 +45,7 @@ def sort_recording(recording, file_name):
   default_ms4_params = ss.Mountainsort4Sorter.default_params()
   default_ms4_params['detect_threshold'] = 4
   default_ms4_params['curation'] = False
+  default_ms4_params['filter'] = filter
   sorting = ss.run_mountainsort4(recording=recording, **default_ms4_params, output_folder=output_dir+file_name)
 
   print("Sorting time:", time.time() - start_time)
@@ -75,17 +76,17 @@ def postprocess_recording(recording, sorting, file_name):
   return wf, max_chan, templates
 
 if __name__ == "__main__":
-  directory_in_str = "../raw_mat_files"
+  directory_in_str = "../eisi_raw_mat_files"
   directory = os.fsencode(directory_in_str)
   for file in os.listdir(directory):
     file_name = os.fsdecode(file)
+    # file_name = "acc_1_04052016_kurocoppola_pre.mat"
     file_path = os.path.join(directory_in_str, file_name)
     file_name = file_name.replace('.mat', '')
     f = h5py.File(file_path, 'r')
     num_channels = f['mat'].shape[1]
     ts = np.transpose(np.array(f['mat']))
     f.close()
-
     recording = extract_recording(timeseries=ts)
     recording_f = preprocess_recording(recording=recording, freq_min=300, freq_max=6000)
     sorting = sort_recording(recording=recording_f, file_name=file_name)
@@ -95,10 +96,17 @@ if __name__ == "__main__":
     if not os.path.exists(output_dir):
       os.mkdir(output_dir)
 
-    fig, axs = plt.subplots(2, 1, constrained_layout=True)
-    for i in range(len(wf)):
-      axs[0].plot(wf[i][:, 0, :].T, lw=0.3)
-      axs[1].plot(templates[i].T)
+    fig, axs = plt.subplots(3, 1, constrained_layout=True)
+
+    for j in range(num_channels):
+      for i in range(len(wf)):
+        axs[0].plot(wf[i][:, j, :].T, lw=0.3)
+        axs[1].plot(wf[i][:, j, :].T, lw=0.3)
+        axs[2].plot(templates[i].T)
+
+    axs[1].set_ylim(-0.1, 0.1)
     axs[0].set_title('Waveform visualization for '+ file_name)
-    axs[1].set_title('Template visualization for '+ file_name)
+    axs[1].set_title('Zoomed in waveform visualization for '+ file_name)
+    axs[2].set_title('Template visualization for '+ file_name)
     fig.savefig(output_dir + file_name + '_waveform.png')
+
